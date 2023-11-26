@@ -167,7 +167,14 @@ module lab7(
     end
 
     // 7 segment Control
-    reg[16:0] nums;
+    reg [16:0] nums;
+    reg [7:0] score = 0;
+    always @(posedge clk) begin
+        if(!_mode && _start) begin
+            if(correct==1 && score<99) score = score + 1;
+            else score = score;
+        end else score = 0;
+    end
 	SevenSegment seven_seg (
 		.display(DISPLAY),
 		.digit(DIGIT),
@@ -207,35 +214,36 @@ module lab7(
                 endcase
             end else nums = {4'd10, 4'd10, 5'd10, 4'd10};
         end else begin  // PLAY mode
-            if(_play) begin
-                case (freqR)
-                    `hc: nums = {4'd10, 4'd10, 5'd11, 4'd5};
-                    `hd: nums = {4'd10, 4'd10, 5'd12, 4'd5};
-                    `he: nums = {4'd10, 4'd10, 5'd13, 4'd5};
-                    `hf: nums = {4'd10, 4'd10, 5'd14, 4'd5};
-                    `hg: nums = {4'd10, 4'd10, 5'd15, 4'd5};
-                    `ha: nums = {4'd10, 4'd10, 5'd16, 4'd5};
-                    `hb: nums = {4'd10, 4'd10, 5'd17, 4'd5};
+            case (freqR)
+                `hc: nums = {score/10, score%10, 5'd11, 4'd5};
+                `hd: nums = {score/10, score%10, 5'd12, 4'd5};
+                `he: nums = {score/10, score%10, 5'd13, 4'd5};
+                `hf: nums = {score/10, score%10, 5'd14, 4'd5};
+                `hg: nums = {score/10, score%10, 5'd15, 4'd5};
+                `ha: nums = {score/10, score%10, 5'd16, 4'd5};
+                `hb: nums = {score/10, score%10, 5'd17, 4'd5};
 
-                    `c: nums = {4'd10, 4'd10, 5'd11, 4'd4};
-                    `d: nums = {4'd10, 4'd10, 5'd12, 4'd4};
-                    `e: nums = {4'd10, 4'd10, 5'd13, 4'd4};
-                    `f: nums = {4'd10, 4'd10, 5'd14, 4'd4};
-                    `g: nums = {4'd10, 4'd10, 5'd15, 4'd4};
-                    `a: nums = {4'd10, 4'd10, 5'd16, 4'd4};
-                    `b: nums = {4'd10, 4'd10, 5'd17, 4'd4};
+                `c: nums = {score/10, score%10, 5'd11, 4'd4};
+                `d: nums = {score/10, score%10, 5'd12, 4'd4};
+                `e: nums = {score/10, score%10, 5'd13, 4'd4};
+                `f: nums = {score/10, score%10, 5'd14, 4'd4};
+                `g: nums = {score/10, score%10, 5'd15, 4'd4};
+                `a: nums = {score/10, score%10, 5'd16, 4'd4};
+                `b: nums = {score/10, score%10, 5'd17, 4'd4};
 
-                    `lc: nums = {4'd10, 4'd10, 5'd11, 4'd3};
-                    `ld: nums = {4'd10, 4'd10, 5'd12, 4'd3};
-                    `le: nums = {4'd10, 4'd10, 5'd13, 4'd3};
-                    `lf: nums = {4'd10, 4'd10, 5'd14, 4'd3};
-                    `lg: nums = {4'd10, 4'd10, 5'd15, 4'd3};
-                    `la: nums = {4'd10, 4'd10, 5'd16, 4'd3};
-                    `lb: nums = {4'd10, 4'd10, 5'd17, 4'd3};
-                    
-                    default: nums = {4'd10, 4'd10, 5'd10, 4'd10};
-                endcase
-            end else nums = {4'd10, 4'd10, 5'd10, 4'd10};
+                `lc: nums = {score/10, score%10, 5'd11, 4'd3};
+                `ld: nums = {score/10, score%10, 5'd12, 4'd3};
+                `le: nums = {score/10, score%10, 5'd13, 4'd3};
+                `lf: nums = {score/10, score%10, 5'd14, 4'd3};
+                `lg: nums = {score/10, score%10, 5'd15, 4'd3};
+                `la: nums = {score/10, score%10, 5'd16, 4'd3};
+                `lb: nums = {score/10, score%10, 5'd17, 4'd3};
+
+                `sil: nums = {4'd8, 4'd8, 5'd8, 4'd8};
+                
+                
+                default: nums = {4'd10, 4'd10, 5'd10, 4'd10};
+            endcase
         end
     end
 
@@ -255,7 +263,8 @@ module lab7(
     // [in]  beat number and en
     // [out] left & right raw frequency
     wire [4:0] key;
-    assign key = (key_down[last_change] && been_ready)? key_num : 5'b11111;
+    wire correct;
+    assign key = (key_down[last_change])? key_num : 5'b11111;
     music_example music_00 (
         .ibeatNum(ibeatNum),
         .key(key),
@@ -265,7 +274,8 @@ module lab7(
         .last_change(last_change),
         .start(_start),
         .toneL(freqL),
-        .toneR(freqR)
+        .toneR(freqR),
+        .correct(correct)
     );
 
     // freq_outL, freq_outR
@@ -430,7 +440,8 @@ module music_example (
     input been_ready, 
     input [8:0] last_change,
 	output reg [31:0] toneL,
-    output reg [31:0] toneR
+    output reg [31:0] toneR,
+    output reg correct
 );
 
     reg [31:0] key_tone;
@@ -719,6 +730,13 @@ module music_example (
         end
     end
 
+    always @(*) begin
+        if(!demonstrate && start) begin
+            if(toneR == key_tone) correct = 1;
+            else correct = 0;
+        end else correct = 0;
+    end
+
 endmodule
 
 module note_gen(
@@ -806,4 +824,131 @@ module note_gen(
                                 (b_clk == 1'b0) ? -v_amp : v_amp;
     assign audio_right = (note_div_right == 22'd1) ? 16'h0000 : 
                                 (c_clk == 1'b0) ? -v_amp : v_amp;
+endmodule
+
+module KeyboardDecoder(
+	input wire rst,
+	input wire clk,
+	inout wire PS2_DATA,
+	inout wire PS2_CLK,
+	output reg [65:0] key_down,
+	output wire [8:0] last_change,
+	output reg key_valid
+    );
+    
+    parameter [1:0] INIT			= 2'b00;
+    parameter [1:0] WAIT_FOR_SIGNAL = 2'b01;
+    parameter [1:0] GET_SIGNAL_DOWN = 2'b10;
+    parameter [1:0] WAIT_RELEASE    = 2'b11;
+    
+	parameter [7:0] IS_INIT			= 8'hAA;
+    parameter [7:0] IS_EXTEND		= 8'hE0;
+    parameter [7:0] IS_BREAK		= 8'hF0;
+    
+    reg [9:0] key;		// key = {been_extend, been_break, key_in}
+    reg [1:0] state;
+    reg been_ready, been_extend, been_break;
+    
+    wire [7:0] key_in;
+    wire is_extend;
+    wire is_break;
+    wire valid;
+    wire err;
+    
+    wire [511:0] key_decode = 1 << last_change;
+    assign last_change = {key[9], key[7:0]};
+    
+    KeyboardCtrl_0 inst (
+		.key_in(key_in),
+		.is_extend(is_extend),
+		.is_break(is_break),
+		.valid(valid),
+		.err(err),
+		.PS2_DATA(PS2_DATA),
+		.PS2_CLK(PS2_CLK),
+		.rst(rst),
+		.clk(clk)
+	);
+	
+	onepulse op (
+		.signal(been_ready),
+		.clk(clk),
+		.op(pulse_been_ready)
+	);
+    
+    always @ (posedge clk, posedge rst) begin
+    	if (rst) begin
+    		state <= INIT;
+    		been_ready  <= 1'b0;
+    		been_extend <= 1'b0;
+    		been_break  <= 1'b0;
+    		key <= 10'b0_0_0000_0000;
+    	end else begin
+    		state <= state;
+			been_ready  <= been_ready;
+			been_extend <= (is_extend) ? 1'b1 : been_extend;
+			been_break  <= (is_break ) ? 1'b1 : been_break;
+			key <= key;
+    		case (state)
+    			INIT : begin
+    					if (key_in == IS_INIT) begin
+    						state <= WAIT_FOR_SIGNAL;
+    						been_ready  <= 1'b0;
+							been_extend <= 1'b0;
+							been_break  <= 1'b0;
+							key <= 10'b0_0_0000_0000;
+    					end else begin
+    						state <= INIT;
+    					end
+    				end
+    			WAIT_FOR_SIGNAL : begin
+    					if (valid == 0) begin
+    						state <= WAIT_FOR_SIGNAL;
+    						been_ready <= 1'b0;
+    					end else begin
+    						state <= GET_SIGNAL_DOWN;
+    					end
+    				end
+    			GET_SIGNAL_DOWN : begin
+						state <= WAIT_RELEASE;
+						key <= {been_extend, been_break, key_in};
+						been_ready  <= 1'b1;
+    				end
+    			WAIT_RELEASE : begin
+    					if (valid == 1) begin
+    						state <= WAIT_RELEASE;
+    					end else begin
+    						state <= WAIT_FOR_SIGNAL;
+    						been_extend <= 1'b0;
+    						been_break  <= 1'b0;
+    					end
+    				end
+    			default : begin
+    					state <= INIT;
+						been_ready  <= 1'b0;
+						been_extend <= 1'b0;
+						been_break  <= 1'b0;
+						key <= 10'b0_0_0000_0000;
+    				end
+    		endcase
+    	end
+    end
+    
+    always @ (posedge clk, posedge rst) begin
+    	if (rst) begin
+    		key_valid <= 1'b0;
+    		key_down <= 511'b0;
+    	end else if (key_decode[last_change] && pulse_been_ready) begin
+    		key_valid <= 1'b1;
+    		if (key[8] == 0) begin
+    			key_down <= key_down | key_decode;
+    		end else begin
+    			key_down <= key_down & (~key_decode);
+    		end
+    	end else begin
+    		key_valid <= 1'b0;
+			key_down <= key_down;
+    	end
+    end
+
 endmodule
